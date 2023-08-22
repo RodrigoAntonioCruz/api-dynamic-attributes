@@ -3,6 +3,7 @@ package com.example.resources;
 
 import com.example.domains.dto.ProductDTO;
 import com.example.services.ProductService;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -95,6 +96,20 @@ public class ProductResource {
             @ApiResponse(responseCode = "500", description = "Sistema indisponível no momento")})
     public ResponseEntity<ProductDTO> findById(@Valid @PathVariable String id) {
         return ResponseEntity.ok().body(productService.findById(id));
+    }
+
+    @DeleteMapping("/attribute/{id}")
+    @Operation(description = "Remove um atributo existente")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "Solicitação sem conteúdo realizada com sucesso"),
+            @ApiResponse(responseCode = "400", description = "Inconsistência nos dados informados."),
+            @ApiResponse(responseCode = "401", description = "Acesso não autorizado"),
+            @ApiResponse(responseCode = "500", description = "Sistema indisponível no momento")})
+    public ResponseEntity<ProductDTO> deleteByAttribute(@Valid @PathVariable String id,
+                                                        @RequestParam(value = "attribute") String attribute,
+                                                        @RequestParam(value = "value") String value) {
+        productService.deleteByAttribute(id, attribute, value);
+        return ResponseEntity.noContent().build();
     }
 
     @DeleteMapping("/{id}")

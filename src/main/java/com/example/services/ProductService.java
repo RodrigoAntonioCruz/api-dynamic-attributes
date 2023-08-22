@@ -7,6 +7,7 @@ import com.example.exceptions.GenericException;
 import com.example.exceptions.NotFoundException;
 import com.example.repositories.ProductRepository;
 import com.example.utils.Constants;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
 import org.modelmapper.ModelMapper;
@@ -15,6 +16,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
+import java.util.Map;
 
 
 @Service
@@ -36,33 +39,28 @@ public class ProductService {
 
     public ProductDTO patch(String id, ProductDTO productDTO) {
 
-        Product updateProduct = findProduct(id);
-        ProductDTO product = ProductDTO.builder().build();
+        Product patchProduct = findProduct(id);
 
         if (!StringUtils.isEmpty(productDTO.getDescription())) {
-
-            updateProduct.setDescription(productDTO.getDescription());
-            product = saveProduct(id, updateProduct);
-        } else {
-            throw new GenericException(Constants.DESCRIPTION_NOT_NULL);
+            patchProduct.setDescription(productDTO.getDescription());
         }
 
         if (productDTO.getAttributes() != null) {
-
-            var attributes = updateProduct.updateDynamicAttributes(productDTO.getAttributes());
-            updateProduct.setAttributes(attributes);
-            product = saveProduct(id, updateProduct);
+            var attributes = patchProduct.updateAttributes(productDTO.getAttributes());
+            patchProduct.setAttributes(attributes);
         }
 
-        return product;
+        return saveProduct(id, patchProduct);
     }
+
 
     public ProductDTO update(String id, ProductDTO productDTO) {
 
         var updateProduct = findProduct(id);
+        var attributes = updateProduct.updateAttributes(productDTO.getAttributes());
 
         updateProduct.setDescription(productDTO.getDescription());
-        updateProduct.setAttributes(productDTO.getAttributes());
+        updateProduct.setAttributes(attributes);
 
         return saveProduct(id, updateProduct);
     }
@@ -77,6 +75,11 @@ public class ProductService {
         return mapper.map(product, ProductDTO.class);
     }
 
+    public void deleteByAttribute(String id, String attribute, String value) {
+        var product = findProduct(id);
+        product.deleteAttributes(attribute, value);
+        productRepository.save(product);
+    }
     public void delete(String id) {
         productRepository.deleteById(findProduct(id).getId());
     }
