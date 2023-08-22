@@ -1,9 +1,5 @@
 package com.example.domains;
 
-import com.example.domains.enums.CollectionType;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -100,9 +96,12 @@ public class Product implements Serializable {
     private boolean shouldRemove(Object item, Object value) {
         if (item instanceof Map<?, ?> itemMap) {
             return itemMap.containsValue(value);
+        } else if (item instanceof Set<?> itemSet) {
+            return itemSet.contains(value);
         }
         return false;
     }
+
 
     private boolean valueMatches(Object item, String value) {
         if (item instanceof Number numberValue) {
@@ -115,13 +114,18 @@ public class Product implements Serializable {
             } else if (isDouble(value) && numberValue instanceof Double) {
                 return numberValue.doubleValue() == Double.parseDouble(value);
             } else {
-                BigDecimal itemValue = new BigDecimal(numberValue.toString());
-                BigDecimal targetValue = new BigDecimal(value);
-                return itemValue.compareTo(targetValue) == 0;
+                try {
+                    BigDecimal itemValue = new BigDecimal(numberValue.toString());
+                    BigDecimal targetValue = new BigDecimal(value);
+                    return itemValue.compareTo(targetValue) == 0;
+                } catch (NumberFormatException e) {
+                    return false;
+                }
             }
         }
         return Objects.equals(item, value);
     }
+
 
     private boolean isInteger(String value) {
         try {

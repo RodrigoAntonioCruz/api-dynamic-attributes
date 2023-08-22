@@ -3,11 +3,9 @@ package com.example.services;
 
 import com.example.domains.Product;
 import com.example.domains.dto.ProductDTO;
-import com.example.exceptions.GenericException;
 import com.example.exceptions.NotFoundException;
 import com.example.repositories.ProductRepository;
 import com.example.utils.Constants;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
 import org.modelmapper.ModelMapper;
@@ -16,8 +14,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.Collection;
-import java.util.Map;
 
 
 @Service
