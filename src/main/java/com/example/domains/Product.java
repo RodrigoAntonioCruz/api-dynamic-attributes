@@ -67,7 +67,7 @@ public class Product implements Serializable {
     }
 
 
-    public Map<String, Object> deleteAttributes(String attribute, String value) {
+    public void deleteAttributes(String attribute, String value) {
         Map<String, Object> updatedAttributes = new HashMap<>(attributes);
 
         Object attributeValue = updatedAttributes.get(attribute);
@@ -79,10 +79,11 @@ public class Product implements Serializable {
             } else if (valueMatches(attributeValue, value)) {
                 updatedAttributes.remove(attribute);
             }
+        } else {
+            updatedAttributes.entrySet().removeIf(entry -> entry.getKey().equals(attribute));
         }
 
         attributes = updatedAttributes;
-        return updatedAttributes;
     }
 
     private void removeValueFromList(Collection<?> list, String value) {
