@@ -13,6 +13,7 @@ import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 
 @Data
@@ -40,40 +41,55 @@ public class Product implements Serializable {
         Map<String, Object> updatedAttributes = new HashMap<>(attributes);
 
         if (newAttributes != null) {
-            for (Map.Entry<String, Object> entry : newAttributes.entrySet()) {
-                String attributeName = entry.getKey();
-                Object newValue = entry.getValue();
-
+            newAttributes.forEach((attributeName, newValue) -> {
                 if (newValue instanceof Collection) {
-                    Collection<Object> currentValues = new ArrayList<>();
-                    if (updatedAttributes.containsKey(attributeName)) {
-                        currentValues.addAll((Collection<Object>) updatedAttributes.get(attributeName));
-                    }
-
-                    for (Object value : (Collection<Object>) newValue) {
-                        if (!currentValues.contains(value)) {
-                            currentValues.add(value);
-                        }
-                    }
-
-                    updatedAttributes.put(attributeName, currentValues);
+                    updateCollectionAttribute(updatedAttributes, attributeName, (Collection<?>) newValue);
                 } else {
                     updatedAttributes.put(attributeName, newValue);
                 }
-            }
+            });
         }
 
         return updatedAttributes;
     }
 
-
     public void deleteAttributes(String attribute, String value) {
         Map<String, Object> updatedAttributes = new HashMap<>(attributes);
 
+        if (attribute.contains(".")) {
+            String[] keyParts = attribute.split("\\.");
+            if (keyParts.length == 2) {
+                String listName = keyParts[0];
+                String subKey = keyParts[1];
+                removeItemFromListByKeyAndValue(updatedAttributes, listName, subKey, value);
+            }
+        } else {
+            removeAttribute(updatedAttributes, attribute, value);
+        }
+
+        attributes = updatedAttributes;
+    }
+
+    private void updateCollectionAttribute(Map<String, Object> updatedAttributes, String attributeName, Collection<?> newValue) {
+        Collection<Object> currentValues = new ArrayList<>();
+        currentValues.addAll(getOrCreateCollectionAttribute(updatedAttributes, attributeName));
+
+        currentValues.addAll(newValue.stream()
+                .filter(item -> !currentValues.contains(item)).toList());
+
+        updatedAttributes.put(attributeName, currentValues);
+    }
+
+    private Collection<Object> getOrCreateCollectionAttribute(Map<String, Object> attributes, String attributeName) {
+        return (Collection<Object>) attributes.computeIfAbsent(attributeName, key -> new ArrayList<>());
+    }
+
+    private void removeAttribute(Map<String, Object> updatedAttributes, String attribute, String value) {
         Object attributeValue = updatedAttributes.get(attribute);
+
         if (attributeValue != null) {
             if (attributeValue instanceof Collection) {
-                removeValueFromList((Collection<?>) attributeValue, value);
+                removeValueFromCollection((Collection<?>) attributeValue, value);
             } else if (attributeValue instanceof Map) {
                 removeValueFromMap((Map<?, ?>) attributeValue, value);
             } else if (valueMatches(attributeValue, value)) {
@@ -82,82 +98,52 @@ public class Product implements Serializable {
         } else {
             updatedAttributes.entrySet().removeIf(entry -> entry.getKey().equals(attribute));
         }
-
-        attributes = updatedAttributes;
     }
 
-    private void removeValueFromList(Collection<?> list, String value) {
-        list.removeIf(item -> valueMatches(item, value) || shouldRemove(item, value));
+    private void removeValueFromCollection(Collection<?> collection, String value) {
+        collection.removeIf(item -> valueMatches(item, value) || shouldRemove(item, value));
     }
 
     private void removeValueFromMap(Map<?, ?> map, String value) {
         map.entrySet().removeIf(entry -> valueMatches(entry.getValue(), value) || shouldRemove(entry.getValue(), value));
     }
 
-    private boolean shouldRemove(Object item, Object value) {
-        if (item instanceof Map<?, ?> itemMap) {
-            return itemMap.containsValue(value);
-        } else if (item instanceof Set<?> itemSet) {
-            return itemSet.contains(value);
+    private void removeItemFromListByKeyAndValue(Map<String, Object> updatedAttributes, String listName, String subKey, String value) {
+        List<Map<String, Object>> itemList = (List<Map<String, Object>>) updatedAttributes.get(listName);
+
+        if (itemList != null) {
+            itemList.removeIf(item -> Objects.equals(item.get(subKey), Integer.parseInt(value)));
         }
-        return false;
     }
 
+    private boolean shouldRemove(Object item, Object value) {
+        return (item instanceof Map && ((Map<?, ?>) item).containsValue(value)) ||
+                (item instanceof Set && ((Set<?>) item).contains(value));
+    }
 
     private boolean valueMatches(Object item, String value) {
-        if (item instanceof Number numberValue) {
-            if (isInteger(value) && numberValue instanceof Integer) {
-                return numberValue.intValue() == Integer.parseInt(value);
-            } else if (isLong(value) && numberValue instanceof Long) {
-                return numberValue.longValue() == Long.parseLong(value);
-            } else if (isFloat(value) && numberValue instanceof Float) {
-                return numberValue.floatValue() == Float.parseFloat(value);
-            } else if (isDouble(value) && numberValue instanceof Double) {
-                return numberValue.doubleValue() == Double.parseDouble(value);
-            } else {
-                try {
-                    BigDecimal itemValue = new BigDecimal(numberValue.toString());
-                    BigDecimal targetValue = new BigDecimal(value);
-                    return itemValue.compareTo(targetValue) == 0;
-                } catch (NumberFormatException e) {
-                    return false;
-                }
+        if (isNumeric(value)) {
+            if (item instanceof Number numberValue) {
+                return numberValue.toString().equals(value) || compareNumberValues(numberValue, value);
             }
+            return false;
         }
         return Objects.equals(item, value);
     }
 
-
-    private boolean isInteger(String value) {
+    private boolean compareNumberValues(Number numberValue, String value) {
         try {
-            Integer.parseInt(value);
-            return true;
+            BigDecimal itemValue = new BigDecimal(numberValue.toString());
+            BigDecimal targetValue = new BigDecimal(value);
+            return itemValue.compareTo(targetValue) == 0;
         } catch (NumberFormatException e) {
             return false;
         }
     }
 
-    private boolean isLong(String value) {
+    private boolean isNumeric(String value) {
         try {
-            Long.parseLong(value);
-            return true;
-        } catch (NumberFormatException e) {
-            return false;
-        }
-    }
-
-    private boolean isFloat(String value) {
-        try {
-            Float.parseFloat(value);
-            return true;
-        } catch (NumberFormatException e) {
-            return false;
-        }
-    }
-
-    private boolean isDouble(String value) {
-        try {
-            Double.parseDouble(value);
+            new BigDecimal(value);
             return true;
         } catch (NumberFormatException e) {
             return false;
