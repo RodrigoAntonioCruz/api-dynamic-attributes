@@ -42,7 +42,7 @@ public class ProductService {
         }
 
         if (productDTO.getAttributes() != null) {
-            var attributes = patchProduct.updateAttributes(productDTO.getAttributes());
+            var attributes = patchProduct.patchAttributes(productDTO.getAttributes());
             patchProduct.setAttributes(attributes);
         }
 

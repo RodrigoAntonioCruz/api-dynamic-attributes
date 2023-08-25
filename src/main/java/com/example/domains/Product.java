@@ -13,7 +13,6 @@ import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.stream.Collectors;
 
 
 @Data
@@ -53,6 +52,71 @@ public class Product implements Serializable {
         return updatedAttributes;
     }
 
+    private void updateCollectionAttribute(Map<String, Object> updatedAttributes, String attributeName, Collection<?> newValue) {
+        Collection<Object> currentValues = new ArrayList<>(getOrCreateCollectionAttribute(updatedAttributes, attributeName));
+
+        List<?> validValues = newValue.stream().filter(this::isValidValue).distinct().toList();
+
+        currentValues.clear();
+        currentValues.addAll(validValues);
+
+        updatedAttributes.put(attributeName, currentValues);
+    }
+
+    public Map<String, Object> patchAttributes(Map<String, Object> partialAttributes) {
+        Map<String, Object> updatedAttributes = new HashMap<>(attributes);
+
+        if (partialAttributes != null) {
+            partialAttributes.forEach((attributeName, newValue) -> {
+                Object currentValue = updatedAttributes.get(attributeName);
+
+                if (currentValue == null) {
+                    updatedAttributes.put(attributeName, newValue);
+                } else if (currentValue instanceof Collection && newValue instanceof Collection) {
+                    patchCollectionAttribute((Collection<Object>) currentValue, (Collection<?>) newValue);
+                } else {
+                    updatedAttributes.put(attributeName, newValue);
+                }
+            });
+        }
+
+        return updatedAttributes;
+    }
+
+    private void patchCollectionAttribute(Collection<Object> existingCollection, Collection<?> newValues) {
+        Set<Object> uniqueValues = new HashSet<>(existingCollection);
+        newValues.stream()
+                .filter(this::isValidValue)
+                .forEach(uniqueValues::add);
+        existingCollection.clear();
+        existingCollection.addAll(uniqueValues);
+    }
+
+
+    private Collection<?> getOrCreateCollectionAttribute(Map<String, Object> attributes, String attributeName) {
+        return Collections.singleton((Collection<?>) attributes.computeIfAbsent(attributeName, key -> new ArrayList<>()));
+    }
+
+    private boolean isValidValue(Object value) {
+        if (value == null) {
+            return false;
+        }
+
+        if (value instanceof String stringValue) {
+            return !stringValue.trim().isEmpty();
+        }
+
+        if (value instanceof Map<?, ?> mapValue) {
+            return !mapValue.isEmpty() && mapValue.values().stream().anyMatch(this::isValidValue);
+        }
+
+        if (value instanceof Collection<?> collectionValue) {
+            return !collectionValue.isEmpty() && collectionValue.stream().anyMatch(this::isValidValue);
+        }
+
+        return true;
+    }
+
     public void deleteAttributes(String attribute, String value) {
         Map<String, Object> updatedAttributes = new HashMap<>(attributes);
 
@@ -61,7 +125,11 @@ public class Product implements Serializable {
             if (keyParts.length == 2) {
                 String listName = keyParts[0];
                 String subKey = keyParts[1];
-                removeItemFromListByKeyAndValue(updatedAttributes, listName, subKey, value);
+                if (subKey.equals("index")) {
+                    removeItemFromListByIndex(updatedAttributes, listName, Integer.parseInt(value));
+                } else {
+                    removeItemFromListByKeyAndValue(updatedAttributes, listName, subKey, value);
+                }
             }
         } else {
             removeAttribute(updatedAttributes, attribute, value);
@@ -70,18 +138,12 @@ public class Product implements Serializable {
         attributes = updatedAttributes;
     }
 
-    private void updateCollectionAttribute(Map<String, Object> updatedAttributes, String attributeName, Collection<?> newValue) {
-        Collection<Object> currentValues = new ArrayList<>();
-        currentValues.addAll(getOrCreateCollectionAttribute(updatedAttributes, attributeName));
+    private void removeItemFromListByIndex(Map<String, Object> updatedAttributes, String listName, int index) {
+        List<?> itemList = (List<?>) updatedAttributes.get(listName);
 
-        currentValues.addAll(newValue.stream()
-                .filter(item -> !currentValues.contains(item)).toList());
-
-        updatedAttributes.put(attributeName, currentValues);
-    }
-
-    private Collection<Object> getOrCreateCollectionAttribute(Map<String, Object> attributes, String attributeName) {
-        return (Collection<Object>) attributes.computeIfAbsent(attributeName, key -> new ArrayList<>());
+        if (itemList != null && index >= 0 && index < itemList.size()) {
+            itemList.remove(index);
+        }
     }
 
     private void removeAttribute(Map<String, Object> updatedAttributes, String attribute, String value) {
@@ -109,10 +171,10 @@ public class Product implements Serializable {
     }
 
     private void removeItemFromListByKeyAndValue(Map<String, Object> updatedAttributes, String listName, String subKey, String value) {
-        List<Map<String, Object>> itemList = (List<Map<String, Object>>) updatedAttributes.get(listName);
+        List<?> itemList = (List<?>) updatedAttributes.get(listName);
 
         if (itemList != null) {
-            itemList.removeIf(item -> Objects.equals(item.get(subKey), Integer.parseInt(value)));
+            itemList.removeIf(item -> Objects.equals(((Map<?, ?>) item).get(subKey), Integer.parseInt(value)));
         }
     }
 
