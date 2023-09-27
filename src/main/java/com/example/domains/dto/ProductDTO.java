@@ -33,9 +33,4 @@ public class ProductDTO implements Serializable {
     @Schema(defaultValue = "Atributos dinâmicos de um produto", example = "{\"year\": 2023, \"value\": 100.0, \"ids\": [1, 2, 3], \"set\": [\"A\", \"B\", \"C\"], \"description\": \"Product description\", \"categories\": [{\"id\": 1, \"name\": \"Electronics\"}, {\"id\": 2, \"name\": \"Computers\"}]}")
     private Map<String, Object> attributes;
 
-    @Schema(defaultValue = "Data de criação", example = "05/09/2022")
-    private LocalDateTime createdAt;
-
-    @Schema(defaultValue = "Data de atualização", example = "01/02/2023")
-    private LocalDateTime updatedAt;
 }

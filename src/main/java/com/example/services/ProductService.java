@@ -25,16 +25,11 @@ public class ProductService {
     private final ProductRepository productRepository;
 
     public ProductDTO create(ProductDTO productDTO) {
-
         var product = mapper.map(productDTO, Product.class);
-
-        product.setCreatedAt(LocalDateTime.now());
-
         return saveProduct(null, product);
     }
 
     public ProductDTO patch(String id, ProductDTO productDTO) {
-
         Product patchProduct = findProduct(id);
 
         if (!StringUtils.isEmpty(productDTO.getDescription())) {
@@ -51,7 +46,6 @@ public class ProductService {
 
 
     public ProductDTO update(String id, ProductDTO productDTO) {
-
         var updateProduct = findProduct(id);
         var attributes = updateProduct.updateAttributes(productDTO.getAttributes());
 
@@ -66,7 +60,6 @@ public class ProductService {
     }
 
     public ProductDTO findById(String id) {
-
         var product = findProduct(id);
         return mapper.map(product, ProductDTO.class);
     }
@@ -86,8 +79,6 @@ public class ProductService {
 
     private ProductDTO saveProduct(String id, Product product) {
         product.setId(id);
-        product.setUpdatedAt(LocalDateTime.now());
-
         var productUpdated = productRepository.save(product);
         return mapper.map(productUpdated, ProductDTO.class);
     }
