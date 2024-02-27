@@ -5,81 +5,82 @@ import com.example.domains.Product;
 import com.example.domains.dto.ProductDTO;
 import com.example.exceptions.NotFoundException;
 import com.example.repositories.ProductRepository;
+import com.example.repositories.ProductRepositoryCustom;
 import com.example.utils.Constants;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
-import org.modelmapper.ModelMapper;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
-
+import static com.example.mappers.ProductMapper.INSTANCE;
 
 @Service
 @RequiredArgsConstructor
 public class ProductService {
 
-    private final ModelMapper mapper;
+    private final ProductRepository repository;
 
-    private final ProductRepository productRepository;
+    private final ProductRepositoryCustom repositoryCustom;
 
     public ProductDTO create(ProductDTO productDTO) {
-        var product = mapper.map(productDTO, Product.class);
+        var product = INSTANCE.toProductEntity(productDTO);
         return saveProduct(null, product);
     }
 
-    public ProductDTO patch(String id, ProductDTO productDTO) {
-        Product patchProduct = findProduct(id);
+    public ProductDTO patch(String id, String index, ProductDTO productDTO) {
+        Product existingProduct = findProductById(id);
 
         if (!StringUtils.isEmpty(productDTO.getDescription())) {
-            patchProduct.setDescription(productDTO.getDescription());
+            existingProduct.setDescription(productDTO.getDescription());
         }
 
         if (productDTO.getAttributes() != null) {
-            var attributes = patchProduct.patchAttributes(productDTO.getAttributes());
-            patchProduct.setAttributes(attributes);
+            var attributes = INSTANCE.patchAttributes(productDTO.getAttributes(), existingProduct.getAttributes(), index);
+            existingProduct.setAttributes(attributes);
         }
 
-        return saveProduct(id, patchProduct);
+        return saveProduct(id, existingProduct);
     }
-
 
     public ProductDTO update(String id, ProductDTO productDTO) {
-        var updateProduct = findProduct(id);
-        var attributes = updateProduct.updateAttributes(productDTO.getAttributes());
+        var existingProduct = findProductById(id);
+        var existingAttributes = existingProduct.getAttributes();
 
-        updateProduct.setDescription(productDTO.getDescription());
-        updateProduct.setAttributes(attributes);
+        var updatedAttributes = INSTANCE.updateAttributes(productDTO.getAttributes(), existingAttributes);
+        existingProduct.setDescription(productDTO.getDescription());
 
-        return saveProduct(id, updateProduct);
+        existingProduct.setAttributes(updatedAttributes);
+        return saveProduct(id, existingProduct);
     }
 
-    public Page<ProductDTO> findAll(Pageable pageable) {
-        return productRepository.findAll(pageable).map(product -> mapper.map(product, ProductDTO.class));
+    public Page<ProductDTO> findByKeyword(String keyword, Pageable pageable) {
+        return repositoryCustom.findByKeyword(keyword, pageable).map(INSTANCE::toProductDTO);
     }
-
     public ProductDTO findById(String id) {
-        var product = findProduct(id);
-        return mapper.map(product, ProductDTO.class);
+        var product = findProductById(id);
+        return INSTANCE.toProductDTO(product);
     }
 
     public void deleteByAttribute(String id, String attribute, String value) {
-        var product = findProduct(id);
-        product.deleteAttributes(attribute, value);
-        productRepository.save(product);
-    }
-    public void delete(String id) {
-        productRepository.deleteById(findProduct(id).getId());
+        var product = findProductById(id);
+        INSTANCE.deleteAttributes(attribute, value, product.getAttributes());
+        repository.save(product);
     }
 
-    private Product findProduct(String id) {
-        return productRepository.findById(id).orElseThrow(() -> new NotFoundException(Constants.NOT_FOUND));
+    public void delete(String id) {
+        findProductById(id);
+        repository.deleteById(findProductById(id).getId());
+    }
+
+    private Product findProductById(String id) {
+        return repository.findById(id)
+                .orElseThrow(() -> new NotFoundException(Constants.NOT_FOUND));
     }
 
     private ProductDTO saveProduct(String id, Product product) {
         product.setId(id);
-        var productUpdated = productRepository.save(product);
-        return mapper.map(productUpdated, ProductDTO.class);
+        var productUpdated = repository.save(product);
+        return INSTANCE.toProductDTO(productUpdated);
     }
 }

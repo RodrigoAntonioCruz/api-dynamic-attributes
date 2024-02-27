@@ -3,7 +3,6 @@ package com.example.resources;
 
 import com.example.domains.dto.ProductDTO;
 import com.example.services.ProductService;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -18,6 +17,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
+import static com.example.utils.Constants.EMPTY;
+
 
 @Slf4j
 @RestController
@@ -27,7 +28,6 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 public class ProductResource {
 
     private final ProductService productService;
-
 
     @PostMapping
     @Operation(description = "Cria um novo produto")
@@ -52,8 +52,9 @@ public class ProductResource {
             @ApiResponse(responseCode = "404", description = "Registro não encontrado"),
             @ApiResponse(responseCode = "409", description = "Duplicidade nos dados informados"),
             @ApiResponse(responseCode = "500", description = "Sistema indisponível no momento")})
-    public ResponseEntity<ProductDTO> patch(@PathVariable String id, @RequestBody ProductDTO productDTO) {
-        return ResponseEntity.ok().body(productService.patch(id, productDTO));
+    public ResponseEntity<ProductDTO> patch(@PathVariable String id,
+                                            @RequestParam(value = "index", defaultValue = EMPTY) String index, @RequestBody ProductDTO productDTO) {
+        return ResponseEntity.ok().body(productService.patch(id, index, productDTO));
     }
 
     @PutMapping("/{id}")
@@ -69,21 +70,20 @@ public class ProductResource {
         return ResponseEntity.ok().body(productService.update(id, productDTO));
     }
 
-    @GetMapping
+    @GetMapping("/search")
     @Operation(description = "Busca paginada de produtos por filtros")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Solicitação realizada com sucesso"),
             @ApiResponse(responseCode = "400", description = "Inconsistência nos dados informados."),
             @ApiResponse(responseCode = "401", description = "Acesso não autorizado"),
             @ApiResponse(responseCode = "500", description = "Sistema indisponível no momento")})
-    public ResponseEntity<Page<ProductDTO>> findAll(@Valid @RequestParam(value = "query", defaultValue = "") String query,
-                                                    @RequestParam(value = "page", defaultValue = "0") Integer page,
-                                                    @RequestParam(value = "linesPerPage", defaultValue = "100") Integer linesPerPage,
-                                                    @RequestParam(value = "direction", defaultValue = "ASC") String direction,
-                                                    @RequestParam(value = "orderBy", defaultValue = "id") String orderBy) {
-        return ResponseEntity.ok().body(productService.findAll(
-                PageRequest.of(page, linesPerPage, Sort.Direction.valueOf(direction), orderBy))
-        );
+    public ResponseEntity<Page<ProductDTO>> findByKeyword(@RequestParam(value = "keyword") String keyword,
+                                                          @RequestParam(value = "page", defaultValue = "0") Integer page,
+                                                          @RequestParam(value = "linesPerPage", defaultValue = "100") Integer linesPerPage,
+                                                          @RequestParam(value = "direction", defaultValue = "ASC") String direction,
+                                                          @RequestParam(value = "orderBy", defaultValue = "id") String orderBy) {
+        Page<ProductDTO> products = productService.findByKeyword(keyword, PageRequest.of(page, linesPerPage, Sort.Direction.valueOf(direction), orderBy));
+        return ResponseEntity.ok().body(products);
     }
 
     @GetMapping("/{id}")
@@ -107,7 +107,7 @@ public class ProductResource {
             @ApiResponse(responseCode = "500", description = "Sistema indisponível no momento")})
     public ResponseEntity<ProductDTO> deleteByAttribute(@Valid @PathVariable String id,
                                                         @RequestParam(value = "attribute") String attribute,
-                                                        @RequestParam(value = "value") String value) {
+                                                        @RequestParam(value = "value", defaultValue = EMPTY) String value) {
         productService.deleteByAttribute(id, attribute, value);
         return ResponseEntity.noContent().build();
     }

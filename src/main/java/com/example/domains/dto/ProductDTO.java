@@ -4,19 +4,22 @@ package com.example.domains.dto;
 import com.example.utils.Constants;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
-import lombok.*;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.ToString;
+import lombok.AllArgsConstructor;
 import org.hibernate.validator.constraints.Length;
 
 import java.io.Serial;
 import java.io.Serializable;
-import java.time.LocalDateTime;
-import java.util.Map;
+import java.util.List;
 
 @Data
 @Builder
 @ToString
-@AllArgsConstructor
 @NoArgsConstructor
+@AllArgsConstructor
 public class ProductDTO implements Serializable {
 
     @Serial
@@ -30,7 +33,6 @@ public class ProductDTO implements Serializable {
     @Schema(defaultValue = "Descrição de um produto", example = "Hidratante Mustela Stelatopia Pele Ressecada e Atópica 500ml")
     private String description;
 
-    @Schema(defaultValue = "Atributos dinâmicos de um produto", example = "{\"year\": 2023, \"value\": 100.0, \"ids\": [1, 2, 3], \"set\": [\"A\", \"B\", \"C\"], \"description\": \"Product description\", \"categories\": [{\"id\": 1, \"name\": \"Electronics\"}, {\"id\": 2, \"name\": \"Computers\"}]}")
-    private Map<String, Object> attributes;
-
+    @Schema(defaultValue = "Atributos dinâmicos de um produto", example = "[{\"key\": \"year\", \"value\": 2023}, {\"key\": \"value\", \"value\": 100.0}, {\"key\": \"ids\", \"value\": [1, 2, 3]}, {\"key\": \"set\", \"value\": [\"A\", \"B\", \"C\"]}, {\"key\": \"description\", \"value\": \"Product description\"}, {\"key\": \"categories\", \"value\": [{\"id\": 1, \"name\": \"Electronics\"}, {\"id\": 2, \"name\": \"Computers\"}]}]")
+    private List<Attribute> attributes;
 }

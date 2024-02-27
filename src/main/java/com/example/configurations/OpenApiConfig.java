@@ -15,8 +15,6 @@ import java.util.List;
 public class OpenApiConfig {
 
     private final OpenApiPropertiesConfig environment;
-
-
     @Bean
     public OpenAPI customOpenAPI() {
 
